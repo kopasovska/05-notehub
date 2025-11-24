@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import css from "./App.module.css";
 import NoteList from "../NoteList/NoteList";
 import {
@@ -7,12 +7,16 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { deleteNote, fetchNotes } from "../../services/noteService";
+import { createNote, deleteNote, fetchNotes } from "../../services/noteService";
 import SearchBox from "../SearchBox/SearchBox";
 import Pagination from "../Pagination/Pagination";
 import { useDebouncedCallback } from "use-debounce";
 import Modal from "../Modal/Modal";
 import NoteForm from "../NoteForm/NoteForm";
+import type { Note } from "../../types/note";
+import toast from "react-hot-toast";
+import Loader from "../Loader/Loader";
+import ErrorMessage from "../ErrorMessage/ErrorMessage";
 
 function App() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,8 +33,25 @@ function App() {
 
   const deleteNoteMutation = useMutation({
     mutationFn: deleteNote,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notes"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      toast.success("Note deleted successfully!");
+    },
   });
+
+  const createNoteMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      toast.success("Note created successfully!");
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoading && data && data.notes.length === 0 && search.trim() !== "") {
+      toast.error("No notes found for this search.");
+    }
+  }, [isLoading, data, search]);
 
   const handleDelete = (id: string): void => {
     deleteNoteMutation.mutate(id);
@@ -48,6 +69,10 @@ function App() {
     1000
   );
 
+  const handleSubmit = (values: Pick<Note, "title" | "content" | "tag">) => {
+    createNoteMutation.mutate(values);
+  };
+
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
@@ -63,12 +88,17 @@ function App() {
           Create note +
         </button>
       </header>
+      {isLoading && <Loader />}
+      {isError && <ErrorMessage />}
       {data && data.notes.length > 0 && (
         <NoteList notes={data.notes} onDelete={handleDelete} />
       )}
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm />
+          <NoteForm
+            onSubmit={handleSubmit}
+            onClose={() => setIsModalOpen(false)}
+          />
         </Modal>
       )}
     </div>
