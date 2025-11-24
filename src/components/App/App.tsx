@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
 import css from "./App.module.css";
 import NoteList from "../NoteList/NoteList";
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { createNote, deleteNote, fetchNotes } from "../../services/noteService";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { fetchNotes } from "../../services/noteService";
 import SearchBox from "../SearchBox/SearchBox";
 import Pagination from "../Pagination/Pagination";
 import { useDebouncedCallback } from "use-debounce";
 import Modal from "../Modal/Modal";
 import NoteForm from "../NoteForm/NoteForm";
-import type { Note } from "../../types/note";
 import toast from "react-hot-toast";
 import Loader from "../Loader/Loader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
@@ -23,28 +17,10 @@ function App() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const queryClient = useQueryClient();
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ["notes", currentPage, search],
     queryFn: () => fetchNotes(currentPage, search),
     placeholderData: keepPreviousData,
-  });
-
-  const deleteNoteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      toast.success("Note deleted successfully!");
-    },
-  });
-
-  const createNoteMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      toast.success("Note created successfully!");
-    },
   });
 
   useEffect(() => {
@@ -52,10 +28,6 @@ function App() {
       toast.error("No notes found for this search.");
     }
   }, [isLoading, data, search]);
-
-  const handleDelete = (id: string): void => {
-    deleteNoteMutation.mutate(id);
-  };
 
   const updateCurrentPage = (page: number) => {
     setCurrentPage(page);
@@ -68,10 +40,6 @@ function App() {
     },
     1000
   );
-
-  const handleSubmit = (values: Pick<Note, "title" | "content" | "tag">) => {
-    createNoteMutation.mutate(values);
-  };
 
   return (
     <div className={css.app}>
@@ -90,15 +58,10 @@ function App() {
       </header>
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
-      {data && data.notes.length > 0 && (
-        <NoteList notes={data.notes} onDelete={handleDelete} />
-      )}
+      {data && data.notes.length > 0 && <NoteList notes={data.notes} />}
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm
-            onSubmit={handleSubmit}
-            onClose={() => setIsModalOpen(false)}
-          />
+          <NoteForm onClose={() => setIsModalOpen(false)} />
         </Modal>
       )}
     </div>

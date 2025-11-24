@@ -11,7 +11,7 @@ export default function SearchBox({ value, onSearch }: SearchBoxProps) {
       className={css.input}
       type="text"
       placeholder="Search notes"
-      name={value}
+      value={value}
       onChange={onSearch}
     />
   );

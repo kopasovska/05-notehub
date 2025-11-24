@@ -3,9 +3,11 @@ import css from "./NoteForm.module.css";
 import { useId } from "react";
 import { NoteTag } from "../../types/note";
 import * as Yup from "yup";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createNote } from "../../services/noteService";
+import toast from "react-hot-toast";
 
 interface NoteFormProps {
-  onSubmit: (values: FormValues) => void;
   onClose: () => void;
 }
 
@@ -16,8 +18,8 @@ interface FormValues {
 }
 
 const initialValues: FormValues = {
-  title: "Add note title...",
-  content: "Add note description...",
+  title: "",
+  content: "",
   tag: NoteTag.Todo,
 };
 
@@ -41,14 +43,24 @@ const validationSchema = Yup.object().shape({
     .required("Tag is required"),
 });
 
-export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
+export default function NoteForm({ onClose }: NoteFormProps) {
   const fieldId = useId();
+
+  const queryClient = useQueryClient();
+
+  const createNoteMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      toast.success("Note created successfully!");
+    },
+  });
 
   const handleSubmit = (
     values: FormValues,
     actions: FormikHelpers<FormValues>
   ) => {
-    onSubmit(values);
+    createNoteMutation.mutate(values);
     actions.resetForm();
     onClose();
   };
@@ -97,7 +109,6 @@ export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
             <option value={NoteTag.Personal}>Personal</option>
             <option value={NoteTag.Meeting}>Meeting</option>
             <option value={NoteTag.Shopping}>Shopping</option>
-            <option value="error">Error</option>
           </Field>
           <ErrorMessage name="tag" component="span" className={css.error} />
         </div>
